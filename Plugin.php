@@ -42,7 +42,14 @@ class Plugin extends \MapasCulturais\Plugin
             foreach ($values as $value) {
                 $slo = $slug . "_" . $count;
 
-                $app->hook('repo(<<*>>).getIdsByKeywordDQL.join', function (&$joins, $keyword) use ($value, $slo) {
+                $app->hook('repo(<<*>>).getIdsByKeywordDQL.join', function (&$joins, $keyword) use ($value, $slo, $app) {
+                    $class_name = $this->getClassName();
+                    $metadata = $app->getRegisteredMetadata($class_name);
+                    if(!isset($metadata[$value])){
+                        return;
+                    }
+                    
+
                     $joins .= "
                     LEFT JOIN 
                         e.__metadata " . $slo . "
@@ -50,8 +57,18 @@ class Plugin extends \MapasCulturais\Plugin
                         e.id = " . $slo . ".owner AND " . $slo . ".key = '{$value}' ";
                 });
 
-                $app->hook('repo(<<*>>).getIdsByKeywordDQL.where', function (&$where, $keyword) use ($slo) {
-                    $where .= " OR (unaccent(lower(" . $slo . ".value)) LIKE unaccent(lower(:keyword)))";
+                $app->hook('repo(<<*>>).getIdsByKeywordDQL.where', function (&$where, $keyword) use ($slo, $app, $value) {
+                    $class_name = $this->getClassName();
+                    $metadata = $app->getRegisteredMetadata($class_name);
+                    if(!isset($metadata[$value])){
+                        return;
+                    }
+                   
+                    if(trim($where)){
+                        $where .= " OR (unaccent(lower(" . $slo . ".value)) LIKE unaccent(lower(:keyword)))";
+                    }else{
+                        $where .= " (unaccent(lower(" . $slo . ".value)) LIKE unaccent(lower(:keyword)))";
+                    }
                 });
                 $count++;
             }
